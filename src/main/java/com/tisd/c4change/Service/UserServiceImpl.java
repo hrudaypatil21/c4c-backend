@@ -1,5 +1,6 @@
 package com.tisd.c4change.Service;
 
+import com.tisd.c4change.Controller.UserController;
 import com.tisd.c4change.CustomException.*;
 import com.tisd.c4change.DTO.IndividualDTO.*;
 import com.tisd.c4change.DTO.NgoDTO.*;
@@ -8,6 +9,8 @@ import com.tisd.c4change.Mapper.DtoConverter;
 import com.tisd.c4change.Password.PasswordUtil;
 import com.tisd.c4change.Repository.NGORepository;
 import com.tisd.c4change.Repository.IndividualRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +21,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService{
-
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     private final IndividualRepository individualRepository;
     private final NGORepository ngoRepository;
     private final FileStorageService fileStorageService;
@@ -56,7 +59,6 @@ public class UserServiceImpl implements UserService{
             byte[] resumeBytes = fileStorageService.storeFile(registrationDto.getResume());
             user.setResumePath(resumeBytes);
         }
-        System.out.println("Password hash before save: " + user.getPasswordHash());
         IndividualUser savedUser = individualRepository.save(user);
         return DtoConverter.toIndividualResponseDto(savedUser);
     }
@@ -67,29 +69,38 @@ public class UserServiceImpl implements UserService{
             throw new EmailAlreadyExistsException("Email already registered.");
         }
 
-        // Map DTO to entity
-        NGOProfile ngo = new NGOProfile() ;
-        ngo.setEmail(registrationDto.getEmail());
-        ngo.setPassword(registrationDto.getPassword());
-        ngo.setOrgName(registrationDto.getOrgName());
-        ngo.setRegNumber(registrationDto.getRegNumber());
-        ngo.setOrgPhone(registrationDto.getOrgPhone());
-        ngo.setOrgAddress(registrationDto.getOrgAddress());
-        ngo.setOrgMission(registrationDto.getOrgMission());
-        ngo.setOrgWebsite(registrationDto.getOrgWebsite());
-        ngo.setVolNeeds(registrationDto.getVolNeeds());
-
-
-        if (registrationDto.getVerificationDocs() != null && !registrationDto.getVerificationDocs().isEmpty()) {
-            byte[] verificationDocs = fileStorageService.storeFile(registrationDto.getVerificationDocs());
-            ngo.setVerificationDocsPath(verificationDocs);
+        if (ngoRepository.existsByRegNumber(registrationDto.getRegNumber())) {
+            logger.warn("Registration attempt with existing reg number: {}", registrationDto.getRegNumber());
+            throw new ConflictException("Registration number already exists");
         }
 
-        // Save to database
-        NGOProfile savedNGO = ngoRepository.save(ngo);
+        try {
+            // Map DTO to entity
+            NGOProfile ngo = new NGOProfile();
+            ngo.setEmail(registrationDto.getEmail());
+            ngo.setPassword(registrationDto.getPassword());
+            ngo.setOrgName(registrationDto.getOrgName());
+            ngo.setRegNumber(registrationDto.getRegNumber());
+            ngo.setOrgPhone(registrationDto.getPhone());
+            ngo.setOrgAddress(registrationDto.getAddress());
+            ngo.setOrgMission(registrationDto.getMission());
+            ngo.setOrgWebsite(registrationDto.getWebsite());
+            ngo.setVolNeeds(registrationDto.getVolNeeds());
 
-        // Return response DTO
-        return DtoConverter.toNGOResponseDto(savedNGO);
+            if (registrationDto.getVerificationDocs() != null && !registrationDto.getVerificationDocs().isEmpty()) {
+                byte[] verificationDocs = fileStorageService.storeFile(registrationDto.getVerificationDocs());
+                ngo.setVerificationDocsPath(verificationDocs);
+            }
+
+            // Save to database
+            NGOProfile savedNGO = ngoRepository.save(ngo);
+
+            // Return response DTO
+            return DtoConverter.toNGOResponseDto(savedNGO);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new ConflictException("Failed to register NGO");
+        }
     }
 
     @Override
@@ -114,6 +125,7 @@ public class UserServiceImpl implements UserService{
         }
 
         return DtoConverter.toNGOResponseDto(user);
+
     }
 
     @Override

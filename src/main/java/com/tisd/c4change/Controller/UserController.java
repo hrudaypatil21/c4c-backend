@@ -2,12 +2,15 @@ package com.tisd.c4change.Controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tisd.c4change.CustomException.EmailAlreadyExistsException;
 import com.tisd.c4change.DTO.IndividualDTO.IndividualRegistrationDto;
 import com.tisd.c4change.DTO.IndividualDTO.IndividualResponseDto;
 import com.tisd.c4change.DTO.NgoDTO.NGORegistrationDto;
 import com.tisd.c4change.DTO.NgoDTO.NGOResponseDto;
 import com.tisd.c4change.Entity.Availability;
 import com.tisd.c4change.Service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,13 +19,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
 public class UserController {
-
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     @Autowired
     UserService userService;
 
@@ -51,8 +57,10 @@ public class UserController {
             dto.setPhone(phone);
             dto.setAddress(address);
             dto.setBio(bio);
-            dto.setSkills(mapper.readValue(skills, new TypeReference<List<String>>() {}));
-            dto.setInterests(mapper.readValue(interests, new TypeReference<List<String>>() {}));
+            dto.setSkills(mapper.readValue(skills, new TypeReference<List<String>>() {
+            }));
+            dto.setInterests(mapper.readValue(interests, new TypeReference<List<String>>() {
+            }));
             dto.setAvailability(Availability.valueOf(availability.toUpperCase()));
             dto.setResume(resume);
 
@@ -68,10 +76,51 @@ public class UserController {
         }
     }
 
-    @PostMapping("/register-ngo")
-    public ResponseEntity<NGOResponseDto> registerNGO(@RequestBody NGORegistrationDto ngoRegistrationDto) {
-        NGOResponseDto savedNGO = userService.registerNGO(ngoRegistrationDto);
-        return new ResponseEntity<>(savedNGO,HttpStatus.CREATED);
+    @PostMapping(value = "/register-ngo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> registerNGO(
+            @RequestPart("orgName") String orgName,
+            @RequestPart("email") String email,
+            @RequestPart("regNumber") String regNumber,
+            @RequestPart("password") String password,
+            @RequestPart(value = "phone", required = false) String phone,
+            @RequestPart(value = "address", required = false) String address,
+            @RequestPart(value = "mission", required = false) String mission,
+            @RequestPart(value = "website", required = false) String website,
+            @RequestPart("volNeeds") String volNeeds,
+            @RequestPart("verificationDocs") MultipartFile verificationDocs) {
+
+        try {
+            logger.info("Starting NGO registration for: {}", email);
+
+            // Convert comma-separated string to List
+            ObjectMapper objectMapper = new ObjectMapper();
+            NGORegistrationDto dto = new NGORegistrationDto();
+            dto.setOrgName(orgName);
+            dto.setEmail(email);
+            dto.setPassword(password);
+            dto.setRegNumber(regNumber);
+            dto.setPhone(phone);
+            dto.setAddress(address);
+            dto.setMission(mission);
+            dto.setWebsite(website);
+            dto.setVolNeeds(objectMapper.readValue(volNeeds, new TypeReference<List<String>>() {}));
+            dto.setVerificationDocs(verificationDocs);
+
+            NGOResponseDto response = userService.registerNGO(dto);
+            return ResponseEntity.ok(response);
+
+        } catch (EmailAlreadyExistsException e) {
+            logger.warn("Registration failed - email exists: {}", email);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    Map.of("error", "Email already registered"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Registration failed",
+                    "message", e.getMessage(),
+                    "details", e.getClass().getSimpleName()
+            ));
+        }
     }
 
     @PostMapping("/debug-form")

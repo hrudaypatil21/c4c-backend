@@ -29,10 +29,10 @@ public class DtoConverter {
         dto.setEmail(ngo.getEmail());
         dto.setOrgName(ngo.getOrgName());
         dto.setRegNumber(ngo.getRegNumber());
-        dto.setOrgPhone(ngo.getOrgPhone());
-        dto.setOrgAddress(ngo.getOrgAddress());
-        dto.setOrgMission(ngo.getOrgMission());
-        dto.setOrgWebsite(ngo.getOrgWebsite());
+        dto.setPhone(ngo.getOrgPhone());
+        dto.setAddress(ngo.getOrgAddress());
+        dto.setMission(ngo.getOrgMission());
+        dto.setWebsite(ngo.getOrgWebsite());
         dto.setVolNeeds(ngo.getVolNeeds());
         dto.setHasVerificationDocs(ngo.getVerificationDocsPath() != null && ngo.getVerificationDocsPath().length > 0);
         return dto;

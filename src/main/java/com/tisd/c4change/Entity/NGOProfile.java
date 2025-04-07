@@ -2,18 +2,22 @@ package com.tisd.c4change.Entity;
 
 import com.tisd.c4change.Password.PasswordUtil;
 import jakarta.persistence.*;
+import jdk.jfr.BooleanFlag;
 import lombok.*;
 import lombok.experimental.Accessors;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Accessors(chain = true)
 @Entity
-@Table(name = "ngo_users")
+@Accessors(chain = true)
+@Table(name = "ngo_profiles")
 public class NGOProfile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,8 +26,8 @@ public class NGOProfile {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false, name = "password")
-    private String passwordHash;  // Properly hashed
+    @Column(nullable = false, name = "password_hash")
+    private String passwordHash;
 
     @Column(nullable = false)
     private String orgName;
@@ -45,9 +49,10 @@ public class NGOProfile {
     @CollectionTable(name = "ngo_volunteer_needs", joinColumns = @JoinColumn(name = "ngo_id"))
     private List<String> volNeeds;
 
-    @Setter
     @Lob
     private byte[] verificationDocsPath;
+
+    private Boolean isVerified = false;
 
     public void setEmail(String email) {
         if (email == null || email.isBlank()) {
@@ -61,8 +66,6 @@ public class NGOProfile {
     }
 
     public boolean verifyPassword(String password) {
-        return password.isEmpty() || PasswordUtil.verifyPassword(password, this.passwordHash);
+        return PasswordUtil.verifyPassword(password, this.passwordHash);
     }
-
-
 }

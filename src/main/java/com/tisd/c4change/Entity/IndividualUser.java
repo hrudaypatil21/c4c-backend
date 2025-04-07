@@ -56,9 +56,8 @@ public class IndividualUser {
 
     // Proper password handling
     public void setPassword(String password) {
-        System.out.println("Original password: " + password);  // Remove this in production!
-        this.passwordHash = PasswordUtil.hashPassword(password);
-        System.out.println("Hashed password: " + this.passwordHash);  // Remove this in production!
+ // Remove this in production
+        this.passwordHash = PasswordUtil.hashPassword(password); // Remove this in production!
     }
 
     public boolean verifyPassword(String password) {

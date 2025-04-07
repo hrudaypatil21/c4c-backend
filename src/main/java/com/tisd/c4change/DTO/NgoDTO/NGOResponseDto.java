@@ -16,10 +16,10 @@ public class NGOResponseDto {
     private String email;
     private String orgName;
     private String regNumber;
-    private String orgPhone;
-    private String orgAddress;
-    private String orgMission;
-    private String orgWebsite;
+    private String phone;
+    private String address;
+    private String mission;
+    private String website;
     private List<String> volNeeds;
     private boolean hasVerificationDocs;
 }
