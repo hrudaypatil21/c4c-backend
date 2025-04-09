@@ -3,34 +3,43 @@ package com.tisd.c4change.Controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tisd.c4change.CustomException.EmailAlreadyExistsException;
+import com.tisd.c4change.CustomException.InvalidCredentialsException;
+import com.tisd.c4change.CustomException.UserNotFoundException;
+import com.tisd.c4change.DTO.IndividualDTO.IndividualLoginDto;
 import com.tisd.c4change.DTO.IndividualDTO.IndividualRegistrationDto;
 import com.tisd.c4change.DTO.IndividualDTO.IndividualResponseDto;
+import com.tisd.c4change.DTO.NgoDTO.NGOLoginDto;
 import com.tisd.c4change.DTO.NgoDTO.NGORegistrationDto;
 import com.tisd.c4change.DTO.NgoDTO.NGOResponseDto;
 import com.tisd.c4change.Entity.Availability;
+import com.tisd.c4change.Entity.IndividualUser;
+import com.tisd.c4change.Entity.NGOProfile;
+import com.tisd.c4change.JwtTokenUtil;
+import com.tisd.c4change.Mapper.DtoConverter;
 import com.tisd.c4change.Service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Size;
-import java.util.Arrays;
+import javax.security.sasl.AuthenticationException;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*")
 public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     @Autowired
     UserService userService;
+    @Autowired
+    private JwtTokenUtil jwtTokenUtil;
 
     @PostMapping(value = "/register-individual", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> registerIndividual(
@@ -120,6 +129,57 @@ public class UserController {
                     "message", e.getMessage(),
                     "details", e.getClass().getSimpleName()
             ));
+        }
+    }
+
+    @PostMapping("/login-individual")
+    public ResponseEntity<?> loginIndividual(@RequestBody IndividualLoginDto loginDto) {
+        try {
+            System.out.println("Login attempt for: " + loginDto.getEmail());
+
+            IndividualUser user = userService.authenticateIndividual(loginDto);
+            String token = jwtTokenUtil.generateToken(user.getEmail(), "INDIVIDUAL");
+
+            System.out.println("Generated token: " + token); // Debug
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .body(DtoConverter.toIndividualResponseDto(user));
+
+        } catch (AuthenticationException e) {
+            System.out.println("Authentication failed: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+
+    @PostMapping("/login-ngo")
+    public ResponseEntity<?> loginNGO(@RequestBody NGOLoginDto loginDto) {
+        try {
+            logger.info("NGO login request for: {}", loginDto.getEmail());
+
+            NGOProfile user = userService.authenticateNGO(loginDto);
+            String token = jwtTokenUtil.generateToken(user.getEmail(), "NGO");
+
+            logger.debug("Generated JWT token for NGO: {}", user.getEmail());
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .body(DtoConverter.toNGOResponseDto(user));
+
+        } catch (UserNotFoundException e) {
+            logger.warn("NGO login failed - user not found: {}", loginDto.getEmail());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid email or password"));
+
+        } catch (InvalidCredentialsException e) {
+            logger.warn("NGO login failed - invalid credentials: {}", loginDto.getEmail());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid email or password"));
+
+        } catch (Exception e) {
+            logger.error("Unexpected error during NGO login", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Login failed. Please try again later."));
         }
     }
 

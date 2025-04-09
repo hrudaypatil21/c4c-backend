@@ -1,15 +1,12 @@
 package com.tisd.c4change.DTO.IndividualDTO;
 
-import com.tisd.c4change.DTO.BaseUserDto;
 import com.tisd.c4change.Entity.Availability;
 import lombok.*;
-import lombok.experimental.Accessors;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.constraints.*;
 import java.util.List;
 
-// For creating a new Individual User
 @Getter
 @Setter
 @NoArgsConstructor

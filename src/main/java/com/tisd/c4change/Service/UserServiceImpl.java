@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.validation.ValidationException;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -103,16 +104,22 @@ public class UserServiceImpl implements UserService{
         }
     }
 
+    private String generateToken(String email) {
+        // Simple token - replace with JWT in production
+        return "token-" + UUID.randomUUID() + "-" + email.hashCode();
+    }
+
     @Override
     public IndividualResponseDto loginIndividual(IndividualLoginDto loginDto) {
-        IndividualUser user = individualRepository.findByEmail(loginDto.getEmail()).
-                orElseThrow(() -> new UserNotFoundException("Invalid email/password"));
+        IndividualUser user = individualRepository.findByEmail(loginDto.getEmail())
+                .orElseThrow(() -> new UserNotFoundException("Invalid credentials"));
 
         if(!user.verifyPassword(loginDto.getPassword())) {
-            throw new InvalidCredentialsException("Invalid email/password");
+            throw new InvalidCredentialsException("Invalid credentials");
         }
 
-        return DtoConverter.toIndividualResponseDto(user);
+        IndividualResponseDto response = DtoConverter.toIndividualResponseDto(user);
+        return response;
     }
 
     @Override
@@ -130,11 +137,10 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public IndividualResponseDto updateIndividual(Long id, IndividualUpdateDto updateDto) {
-        // Find existing user
+
         IndividualUser user = individualRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        // Update basic fields
         if (updateDto.getName() != null) user.setName(updateDto.getName());
         if (updateDto.getLocation() != null) user.setLocation(updateDto.getLocation());
         if (updateDto.getPhone() != null) user.setPhone(updateDto.getPhone());
@@ -155,13 +161,11 @@ public class UserServiceImpl implements UserService{
             user.setPassword(updateDto.getNewPassword());
         }
 
-        // Handle file upload
         if (updateDto.getResume() != null && !updateDto.getResume().isEmpty()) {
             byte[] resumeBytes = fileStorageService.storeFile(updateDto.getResume());
             user.setResumePath(resumeBytes);
         }
 
-        // Save updates
         IndividualUser updatedUser = individualRepository.save(user);
 
         return DtoConverter.toIndividualResponseDto(updatedUser);
@@ -169,11 +173,9 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public NGOResponseDto updateNGO(Long id, NGOUpdateDto updateDto) {
-        // Find existing NGO
         NGOProfile ngo = ngoRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("NGO not found"));
 
-        // Update basic fields
         if (updateDto.getOrgName() != null) ngo.setOrgName(updateDto.getOrgName());
         if (updateDto.getOrgPhone() != null) ngo.setOrgPhone(updateDto.getOrgPhone());
         if (updateDto.getOrgAddress() != null) ngo.setOrgAddress(updateDto.getOrgAddress());
@@ -181,7 +183,6 @@ public class UserServiceImpl implements UserService{
         if (updateDto.getOrgWebsite() != null) ngo.setOrgWebsite(updateDto.getOrgWebsite());
         if (updateDto.getVolNeeds() != null) ngo.setVolNeeds(updateDto.getVolNeeds());
 
-        // Handle password change
         if (updateDto.isPasswordChangeRequested()) {
             if (!updateDto.isNewPasswordMatching()) {
                 throw new InvalidCredentialsException("New passwords don't match");
@@ -192,7 +193,6 @@ public class UserServiceImpl implements UserService{
             ngo.setPassword(updateDto.getNewPassword());
         }
 
-        // Save updates
         NGOProfile updatedNGO = ngoRepository.save(ngo);
 
         return DtoConverter.toNGOResponseDto(updatedNGO);
@@ -215,6 +215,39 @@ public class UserServiceImpl implements UserService{
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public IndividualUser authenticateIndividual(IndividualLoginDto loginDto) {
+        IndividualUser user = individualRepository.findByEmail(loginDto.getEmail())
+                .orElseThrow(() -> new UserNotFoundException("Invalid credentials"));
+
+        if(!user.verifyPassword(loginDto.getPassword())) {
+            throw new InvalidCredentialsException("Invalid credentials");
+        }
+
+        return user;
+    }
+
+    @Override
+    public NGOProfile authenticateNGO(NGOLoginDto loginDto) {
+        // More detailed logging
+        logger.info("Attempting to authenticate NGO with email: {}", loginDto.getEmail());
+
+        NGOProfile user = ngoRepository.findByEmail(loginDto.getEmail())
+                .orElseThrow(() -> {
+                    logger.warn("NGO not found with email: {}", loginDto.getEmail());
+                    return new UserNotFoundException("Invalid email or password");
+                });
+
+        logger.debug("Found NGO profile: {}", user.getEmail());
+
+        if(!user.verifyPassword(loginDto.getPassword())) {
+            logger.warn("Password verification failed for NGO: {}", loginDto.getEmail());
+            throw new InvalidCredentialsException("Invalid email or password");
+        }
+
+        logger.info("NGO authenticated successfully: {}", user.getEmail());
+        return user;
+    }
 
     }
 

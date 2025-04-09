@@ -1,7 +1,6 @@
 package com.tisd.c4change.DTO.IndividualDTO;
 
 import com.tisd.c4change.Entity.Availability;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

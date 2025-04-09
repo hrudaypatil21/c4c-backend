@@ -24,6 +24,4 @@ public class IndividualResponseDto {
     private List<String> interests;
     private Availability availability;
     private boolean hasResume;
-
-
 }

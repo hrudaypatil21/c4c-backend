@@ -7,9 +7,9 @@ import javax.validation.constraints.*;
 @Setter
 @NoArgsConstructor
 public class NGOLoginDto {
-    @NotBlank
+    @NotBlank @Email
     private String email;
 
-    @NotBlank
+    @NotBlank @Size(min=8)
     private String password;
 }

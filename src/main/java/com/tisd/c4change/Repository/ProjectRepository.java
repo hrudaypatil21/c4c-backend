@@ -12,6 +12,7 @@ import java.util.Optional;
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
     Optional<Project> findById(Long id);
+    List<Project> findByNgoId(Long ngo_id);
     List<Project> findByTitle(String title);
     @Query("SELECT p FROM Project p JOIN p.ngo n WHERE n.orgName = :ngoName")
     List<Project> findByNgoName(@Param("ngoName") String ngoName);
