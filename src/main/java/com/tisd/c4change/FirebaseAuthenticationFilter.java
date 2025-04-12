@@ -1,5 +1,7 @@
 package com.tisd.c4change;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseToken;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,8 +16,8 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private final JwtTokenUtil jwtTokenUtil;
+public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
+    private final FirebaseAuth firebaseAuth;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -31,14 +33,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            final String jwt = authHeader.substring(7);
-            if (jwtTokenUtil.validateToken(jwt)) {
-                Authentication authentication = jwtTokenUtil.getAuthentication(jwt);
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            }
+            final String token = authHeader.substring(7);
+            FirebaseToken decodedToken = firebaseAuth.verifyIdToken(token);
+
+            // Create authentication object
+            Authentication authentication = new FirebaseAuthenticationToken(
+                    decodedToken.getUid(),
+                    decodedToken
+            );
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (Exception e) {
-            logger.error("Cannot set user authentication", e);
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid Firebase token");
             return;
         }
 

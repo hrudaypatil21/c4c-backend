@@ -6,7 +6,6 @@ import com.tisd.c4change.DTO.IndividualDTO.*;
 import com.tisd.c4change.DTO.NgoDTO.*;
 import com.tisd.c4change.Entity.*;
 import com.tisd.c4change.Mapper.DtoConverter;
-import com.tisd.c4change.Password.PasswordUtil;
 import com.tisd.c4change.Repository.NGORepository;
 import com.tisd.c4change.Repository.IndividualRepository;
 import org.slf4j.Logger;
@@ -15,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.validation.ValidationException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -36,9 +34,9 @@ public class UserServiceImpl implements UserService{
         this.fileStorageService = fileStorageService;
     }
 
-    @Override
     @Transactional
-    public IndividualResponseDto registerIndividual(IndividualRegistrationDto registrationDto) {
+    @Override
+    public IndividualResponseDto registerIndividual(IndividualRegistrationDto registrationDto, String firebaseUid) {
         if (individualRepository.existsByEmail(registrationDto.getEmail())) {
             throw new EmailAlreadyExistsException("Email already registered");
         }
@@ -64,8 +62,9 @@ public class UserServiceImpl implements UserService{
         return DtoConverter.toIndividualResponseDto(savedUser);
     }
 
+    @Transactional
     @Override
-    public NGOResponseDto registerNGO(NGORegistrationDto registrationDto) {
+    public NGOResponseDto registerNGO(NGORegistrationDto registrationDto, String firebaseUid) {
         if(ngoRepository.existsByEmail(registrationDto.getEmail())) {
             throw new EmailAlreadyExistsException("Email already registered.");
         }

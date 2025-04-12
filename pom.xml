@@ -93,9 +93,9 @@
 			<version>1.16.0</version>
 		</dependency>
 		<dependency>
-			<groupId>com.huggingface</groupId>
-			<artifactId>tokenizers</artifactId>
-			<version>0.13.0</version>
+			<groupId>com.google.firebase</groupId>
+			<artifactId>firebase-admin</artifactId>
+			<version>9.2.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

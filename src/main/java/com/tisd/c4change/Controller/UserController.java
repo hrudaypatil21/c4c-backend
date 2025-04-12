@@ -2,6 +2,9 @@ package com.tisd.c4change.Controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
 import com.tisd.c4change.CustomException.EmailAlreadyExistsException;
 import com.tisd.c4change.CustomException.InvalidCredentialsException;
 import com.tisd.c4change.CustomException.UserNotFoundException;
@@ -39,7 +42,7 @@ public class UserController {
     @Autowired
     UserService userService;
     @Autowired
-    private JwtTokenUtil jwtTokenUtil;
+    private final FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
 
     @PostMapping(value = "/register-individual", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> registerIndividual(
@@ -56,31 +59,41 @@ public class UserController {
             @RequestPart("resume") MultipartFile resume) {
 
         try {
-            ObjectMapper mapper = new ObjectMapper();
+            // 1. Create Firebase account
+            UserRecord.CreateRequest request = new UserRecord.CreateRequest()
+                    .setEmail(email)
+                    .setPassword(password);
 
+            UserRecord userRecordInd = firebaseAuth.createUser(request);
+
+            // 2. Process your existing DTO
+            ObjectMapper mapper = new ObjectMapper();
             IndividualRegistrationDto dto = new IndividualRegistrationDto();
             dto.setName(name);
             dto.setEmail(email);
-            dto.setPassword(password);
+            dto.setPassword(password); // Will be hashed by your service
             dto.setLocation(location);
             dto.setPhone(phone);
             dto.setAddress(address);
             dto.setBio(bio);
-            dto.setSkills(mapper.readValue(skills, new TypeReference<List<String>>() {
-            }));
-            dto.setInterests(mapper.readValue(interests, new TypeReference<List<String>>() {
-            }));
+            dto.setSkills(mapper.readValue(skills, new TypeReference<List<String>>() {}));
+            dto.setInterests(mapper.readValue(interests, new TypeReference<List<String>>() {}));
             dto.setAvailability(Availability.valueOf(availability.toUpperCase()));
             dto.setResume(resume);
 
-            IndividualResponseDto response = userService.registerIndividual(dto);
+            // 3. Save to your database with Firebase UID
+            IndividualResponseDto response = userService.registerIndividual(dto, userRecordInd.getUid());
+
             return ResponseEntity.ok(response);
+        } catch (FirebaseAuthException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Firebase registration failed",
+                    "message", e.getMessage()
+            ));
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Registration failed",
-                    "message", e.getMessage(),
-                    "details", e.getClass().getSimpleName()
+                    "message", e.getMessage()
             ));
         }
     }
@@ -99,7 +112,11 @@ public class UserController {
             @RequestPart("verificationDocs") MultipartFile verificationDocs) {
 
         try {
-            logger.info("Starting NGO registration for: {}", email);
+            UserRecord.CreateRequest request = new UserRecord.CreateRequest()
+                    .setEmail(email)
+                    .setPassword(password);
+
+            UserRecord userRecordNgo = firebaseAuth.createUser(request);
 
             // Convert comma-separated string to List
             ObjectMapper objectMapper = new ObjectMapper();
@@ -115,7 +132,7 @@ public class UserController {
             dto.setVolNeeds(objectMapper.readValue(volNeeds, new TypeReference<List<String>>() {}));
             dto.setVerificationDocs(verificationDocs);
 
-            NGOResponseDto response = userService.registerNGO(dto);
+            NGOResponseDto response = userService.registerNGO(dto, userRecordNgo.getUid());
             return ResponseEntity.ok(response);
 
         } catch (EmailAlreadyExistsException e) {
@@ -135,19 +152,20 @@ public class UserController {
     @PostMapping("/login-individual")
     public ResponseEntity<?> loginIndividual(@RequestBody IndividualLoginDto loginDto) {
         try {
-            System.out.println("Login attempt for: " + loginDto.getEmail());
+            // 1. Verify with Firebase
+            String token = FirebaseAuth.getInstance()
+                    .createCustomToken(loginDto.getEmail());
 
+            // 2. Your existing authentication logic
             IndividualUser user = userService.authenticateIndividual(loginDto);
-            String token = jwtTokenUtil.generateToken(user.getEmail(), "INDIVIDUAL");
-
-            System.out.println("Generated token: " + token); // Debug
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                     .body(DtoConverter.toIndividualResponseDto(user));
 
+        } catch (FirebaseAuthException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (AuthenticationException e) {
-            System.out.println("Authentication failed: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }
@@ -155,31 +173,19 @@ public class UserController {
     @PostMapping("/login-ngo")
     public ResponseEntity<?> loginNGO(@RequestBody NGOLoginDto loginDto) {
         try {
-            logger.info("NGO login request for: {}", loginDto.getEmail());
+            String token = FirebaseAuth.getInstance()
+                    .createCustomToken(loginDto.getEmail());
 
             NGOProfile user = userService.authenticateNGO(loginDto);
-            String token = jwtTokenUtil.generateToken(user.getEmail(), "NGO");
-
-            logger.debug("Generated JWT token for NGO: {}", user.getEmail());
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                     .body(DtoConverter.toNGOResponseDto(user));
 
-        } catch (UserNotFoundException e) {
-            logger.warn("NGO login failed - user not found: {}", loginDto.getEmail());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid email or password"));
-
-        } catch (InvalidCredentialsException e) {
-            logger.warn("NGO login failed - invalid credentials: {}", loginDto.getEmail());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid email or password"));
-
-        } catch (Exception e) {
-            logger.error("Unexpected error during NGO login", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Login failed. Please try again later."));
+        } catch (FirebaseAuthException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }
 

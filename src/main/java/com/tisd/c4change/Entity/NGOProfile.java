@@ -23,6 +23,9 @@ public class NGOProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "firebase_uid", unique = true)
+    private String firebaseUid;
+
     @Column(unique = true, nullable = false)
     private String email;
 

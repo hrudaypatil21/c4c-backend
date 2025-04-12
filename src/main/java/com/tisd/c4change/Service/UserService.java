@@ -4,15 +4,16 @@ import com.tisd.c4change.DTO.IndividualDTO.*;
 import com.tisd.c4change.DTO.NgoDTO.*;
 import com.tisd.c4change.Entity.IndividualUser;
 import com.tisd.c4change.Entity.NGOProfile;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.security.sasl.AuthenticationException;
 import java.util.List;
 
 public interface UserService {
 
-    //register, login, update
-    IndividualResponseDto registerIndividual(IndividualRegistrationDto registrationDto);
-    NGOResponseDto registerNGO(NGORegistrationDto registrationDto);
+    IndividualResponseDto registerIndividual(IndividualRegistrationDto registrationDto, String firebaseUid);
+    NGOResponseDto registerNGO(NGORegistrationDto registrationDto, String firebaseUid);
+
     IndividualResponseDto loginIndividual(IndividualLoginDto loginDto);
     NGOResponseDto loginNGO(NGOLoginDto loginDto);
     IndividualResponseDto updateIndividual(Long id, IndividualUpdateDto updateDto);
