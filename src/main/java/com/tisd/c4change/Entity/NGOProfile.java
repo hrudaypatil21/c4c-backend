@@ -55,7 +55,7 @@ public class NGOProfile {
     @Lob
     private byte[] verificationDocsPath;
 
-    private Boolean isVerified = false;
+    private Boolean isVerified;
 
     public void setEmail(String email) {
         if (email == null || email.isBlank()) {

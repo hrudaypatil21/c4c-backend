@@ -1,6 +1,5 @@
 package com.tisd.c4change.DTO.NgoDTO;
 
-import com.tisd.c4change.DTO.BaseUserDto;
 import lombok.*;
 import lombok.experimental.Accessors;
 import org.springframework.web.multipart.MultipartFile;

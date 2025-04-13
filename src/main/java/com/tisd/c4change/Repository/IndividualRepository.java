@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface IndividualRepository extends JpaRepository<IndividualUser, Long> {
     Optional<IndividualUser> findIndUserById(Long id);
     Optional<IndividualUser> findByEmail(String email);
+    Optional<IndividualUser> findByFirebaseUid(String FirebaseUid);
     boolean existsByEmail(String email);
 
     @Query("SELECT i FROM IndividualUser i WHERE " +

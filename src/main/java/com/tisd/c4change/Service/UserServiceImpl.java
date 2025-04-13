@@ -37,14 +37,13 @@ public class UserServiceImpl implements UserService{
     @Transactional
     @Override
     public IndividualResponseDto registerIndividual(IndividualRegistrationDto registrationDto, String firebaseUid) {
-        if (individualRepository.existsByEmail(registrationDto.getEmail())) {
+        if (individualRepository.findByEmail(registrationDto.getEmail()).isPresent()) {
             throw new EmailAlreadyExistsException("Email already registered");
         }
 
         IndividualUser user = new IndividualUser();
         user.setEmail(registrationDto.getEmail());
-        // Make sure to hash the password before saving
-        user.setPassword(registrationDto.getPassword()); // This should call setPassword() which hashes it
+        user.setPassword(registrationDto.getPassword());
         user.setName(registrationDto.getName());
         user.setLocation(registrationDto.getLocation());
         user.setPhone(registrationDto.getPhone());
@@ -53,11 +52,13 @@ public class UserServiceImpl implements UserService{
         user.setSkills(registrationDto.getSkills());
         user.setInterests(registrationDto.getInterests());
         user.setAvailability(registrationDto.getAvailability());
+        user.setFirebaseUid(firebaseUid); // THIS IS CRUCIAL
 
         if (registrationDto.getResume() != null && !registrationDto.getResume().isEmpty()) {
             byte[] resumeBytes = fileStorageService.storeFile(registrationDto.getResume());
             user.setResumePath(resumeBytes);
         }
+
         IndividualUser savedUser = individualRepository.save(user);
         return DtoConverter.toIndividualResponseDto(savedUser);
     }
@@ -65,7 +66,7 @@ public class UserServiceImpl implements UserService{
     @Transactional
     @Override
     public NGOResponseDto registerNGO(NGORegistrationDto registrationDto, String firebaseUid) {
-        if(ngoRepository.existsByEmail(registrationDto.getEmail())) {
+        if(ngoRepository.findByEmail(registrationDto.getEmail()).isPresent()) {
             throw new EmailAlreadyExistsException("Email already registered.");
         }
 
@@ -74,33 +75,25 @@ public class UserServiceImpl implements UserService{
             throw new ConflictException("Registration number already exists");
         }
 
-        try {
-            // Map DTO to entity
-            NGOProfile ngo = new NGOProfile();
-            ngo.setEmail(registrationDto.getEmail());
-            ngo.setPassword(registrationDto.getPassword());
-            ngo.setOrgName(registrationDto.getOrgName());
-            ngo.setRegNumber(registrationDto.getRegNumber());
-            ngo.setOrgPhone(registrationDto.getPhone());
-            ngo.setOrgAddress(registrationDto.getAddress());
-            ngo.setOrgMission(registrationDto.getMission());
-            ngo.setOrgWebsite(registrationDto.getWebsite());
-            ngo.setVolNeeds(registrationDto.getVolNeeds());
+        NGOProfile ngo = new NGOProfile();
+        ngo.setEmail(registrationDto.getEmail());
+        ngo.setPassword(registrationDto.getPassword());
+        ngo.setOrgName(registrationDto.getOrgName());
+        ngo.setRegNumber(registrationDto.getRegNumber());
+        ngo.setOrgPhone(registrationDto.getPhone());
+        ngo.setOrgAddress(registrationDto.getAddress());
+        ngo.setOrgMission(registrationDto.getMission());
+        ngo.setOrgWebsite(registrationDto.getWebsite());
+        ngo.setVolNeeds(registrationDto.getVolNeeds());
+        ngo.setFirebaseUid(firebaseUid); // THIS IS CRUCIAL
 
-            if (registrationDto.getVerificationDocs() != null && !registrationDto.getVerificationDocs().isEmpty()) {
-                byte[] verificationDocs = fileStorageService.storeFile(registrationDto.getVerificationDocs());
-                ngo.setVerificationDocsPath(verificationDocs);
-            }
-
-            // Save to database
-            NGOProfile savedNGO = ngoRepository.save(ngo);
-
-            // Return response DTO
-            return DtoConverter.toNGOResponseDto(savedNGO);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new ConflictException("Failed to register NGO");
+        if (registrationDto.getVerificationDocs() != null && !registrationDto.getVerificationDocs().isEmpty()) {
+            byte[] verificationDocs = fileStorageService.storeFile(registrationDto.getVerificationDocs());
+            ngo.setVerificationDocsPath(verificationDocs);
         }
+
+        NGOProfile savedNGO = ngoRepository.save(ngo);
+        return DtoConverter.toNGOResponseDto(savedNGO);
     }
 
     private String generateToken(String email) {
@@ -124,7 +117,7 @@ public class UserServiceImpl implements UserService{
     @Override
     public NGOResponseDto loginNGO(NGOLoginDto loginDto) {
         NGOProfile user = ngoRepository.findByEmail(loginDto.getEmail()).
-                orElseThrow(() -> new UserNotFoundException("Invalid email/password"));
+                orElseThrow(() -> new UserNotFoundException("Invalid credentials"));
 
         if(!user.verifyPassword(loginDto.getPassword())) {
             throw new InvalidCredentialsException("Invalid email/password");
@@ -219,32 +212,16 @@ public class UserServiceImpl implements UserService{
         IndividualUser user = individualRepository.findByEmail(loginDto.getEmail())
                 .orElseThrow(() -> new UserNotFoundException("Invalid credentials"));
 
-        if(!user.verifyPassword(loginDto.getPassword())) {
-            throw new InvalidCredentialsException("Invalid credentials");
-        }
-
         return user;
     }
 
     @Override
     public NGOProfile authenticateNGO(NGOLoginDto loginDto) {
-        // More detailed logging
-        logger.info("Attempting to authenticate NGO with email: {}", loginDto.getEmail());
-
-        NGOProfile user = ngoRepository.findByEmail(loginDto.getEmail())
+          NGOProfile user = ngoRepository.findByEmail(loginDto.getEmail())
                 .orElseThrow(() -> {
-                    logger.warn("NGO not found with email: {}", loginDto.getEmail());
                     return new UserNotFoundException("Invalid email or password");
                 });
 
-        logger.debug("Found NGO profile: {}", user.getEmail());
-
-        if(!user.verifyPassword(loginDto.getPassword())) {
-            logger.warn("Password verification failed for NGO: {}", loginDto.getEmail());
-            throw new InvalidCredentialsException("Invalid email or password");
-        }
-
-        logger.info("NGO authenticated successfully: {}", user.getEmail());
         return user;
     }
 

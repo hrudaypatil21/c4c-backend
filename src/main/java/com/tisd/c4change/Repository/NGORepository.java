@@ -1,5 +1,6 @@
 package com.tisd.c4change.Repository;
 
+import com.tisd.c4change.Entity.IndividualUser;
 import com.tisd.c4change.Entity.NGOProfile;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -15,7 +16,7 @@ public interface NGORepository extends JpaRepository<NGOProfile, Long> {
     Optional<NGOProfile> findNGOUserById(Long id);
     Optional<NGOProfile> findByEmail(String email);
     boolean existsByEmail(String email);
-
+    Optional<NGOProfile> findByFirebaseUid(String FirebaseUid);
     @Query("SELECT n FROM NGOProfile n WHERE " +
             "LOWER(n.orgName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
             "LOWER(n.orgMission) LIKE LOWER(CONCAT('%', :query, '%'))")

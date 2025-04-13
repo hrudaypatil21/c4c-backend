@@ -4,10 +4,13 @@ import com.google.firebase.auth.FirebaseToken;
 import lombok.Getter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.stereotype.Component;
+import java.lang.String;
 
 import java.util.Collections;
 
 public class FirebaseAuthenticationToken extends AbstractAuthenticationToken {
+
     private final String uid;
     @Getter
     private final FirebaseToken token;

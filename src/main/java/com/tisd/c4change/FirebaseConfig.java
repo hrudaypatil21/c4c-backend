@@ -3,31 +3,34 @@ package com.tisd.c4change;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
-import jakarta.annotation.PostConstruct;
+import com.google.firebase.auth.FirebaseAuth;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
 
-import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 @Configuration
 public class FirebaseConfig {
 
-    @Value("${firebase.credentials.path}")
-    private String firebaseConfigPath;
+    @Value("classpath:firebase-service-account.json")
+    private Resource serviceAccountResource;
 
-    @PostConstruct
-    public void initialize() {
-        try {
-            FileInputStream serviceAccount =
-                    new FileInputStream(firebaseConfigPath);
+    @Bean
+    public FirebaseApp firebaseApp() throws IOException {
+        InputStream serviceAccount = serviceAccountResource.getInputStream();
 
-            FirebaseOptions options = FirebaseOptions.builder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                    .build();
+        FirebaseOptions options = FirebaseOptions.builder()
+                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                .build();
 
-            FirebaseApp.initializeApp(options);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        return FirebaseApp.initializeApp(options);
+    }
+
+    @Bean
+    public FirebaseAuth firebaseAuth(FirebaseApp firebaseApp) {
+        return FirebaseAuth.getInstance(firebaseApp);
     }
 }
