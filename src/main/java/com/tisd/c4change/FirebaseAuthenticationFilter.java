@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -31,17 +32,24 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        // Skip authentication for permitted endpoints
+        if (request.getRequestURI().startsWith("/api/login") ||
+                request.getRequestURI().startsWith("/api/register")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Authorization header must be provided");
             return;
         }
 
         String token = authHeader.substring(7);
 
         try {
-            // Add 5-minute leeway for clock skew
             FirebaseToken decodedToken = firebaseAuth.verifyIdToken(token, true);
 
             Authentication authentication = new FirebaseAuthenticationToken(
@@ -54,7 +62,7 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
 
         } catch (FirebaseAuthException e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Invalid Firebase token");
+            response.getWriter().write("Invalid Firebase token: " + e.getMessage());
         }
     }
 }

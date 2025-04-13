@@ -315,6 +315,31 @@ public class UserController {
         }
     }
 
+    @GetMapping("/user-profile")
+    public ResponseEntity<?> getUserProfile(Authentication authentication) {
+        String uid = (String) authentication.getPrincipal();
+
+        // Check both individual and NGO repositories
+        Optional<IndividualUser> individual = individualRepository.findByFirebaseUid(uid);
+        if (individual.isPresent()) {
+            return ResponseEntity.ok(DtoConverter.toIndividualResponseDto(individual.get()));
+        }
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+    }
+
+    @GetMapping("/ngo-profile")
+    public ResponseEntity<?> getNGOProfile(Authentication authentication) {
+        String uid = (String) authentication.getPrincipal();
+
+        Optional<NGOProfile> ngo = ngoRepository.findByFirebaseUid(uid);
+        if (ngo.isPresent()) {
+            return ResponseEntity.ok(DtoConverter.toNGOResponseDto(ngo.get()));
+        }
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("NGO not found");
+    }
+
     @PostMapping("/debug-form")
     public ResponseEntity<String> debugForm(@RequestParam Map<String, String> allParams) {
         return ResponseEntity.ok("Received params: " + allParams.toString());
@@ -327,23 +352,7 @@ public class UserController {
                 ", type: " + file.getContentType());
     }
 
-    @GetMapping("/user-profile")
-    public ResponseEntity<?> getUserProfile(Authentication authentication) {
-        String uid = (String) authentication.getPrincipal();
 
-        // Check both individual and NGO repositories
-        Optional<IndividualUser> individual = individualRepository.findByFirebaseUid(uid);
-        if (individual.isPresent()) {
-            return ResponseEntity.ok(DtoConverter.toIndividualResponseDto(individual.get()));
-        }
-
-        Optional<NGOProfile> ngo = ngoRepository.findByFirebaseUid(uid);
-        if (ngo.isPresent()) {
-            return ResponseEntity.ok(DtoConverter.toNGOResponseDto(ngo.get()));
-        }
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-    }
 
 //    @GetMapping("/u/{id}")
 //    public ResponseEntity<IndividualResponseDto> getIndividualUser(@PathVariable("id") Long id ) {

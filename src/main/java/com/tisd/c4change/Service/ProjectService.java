@@ -57,13 +57,12 @@ public class ProjectService {
 
 
 
-    @Transactional
     public ProjectResponseDto createProject(ProjectRequestDto projectDto) {
-        // Validate NGO exists
+        // 1. Validate NGO exists (already verified in controller)
         NGOProfile ngo = ngoRepository.findById(projectDto.getNgoId())
                 .orElseThrow(() -> new ResourceNotFoundException("NGO not found with id: " + projectDto.getNgoId()));
 
-        // Create project entity
+        // 2. Create project entity
         Project project = new Project();
         project.setTitle(projectDto.getTitle());
         project.setDescription(projectDto.getDescription());
@@ -74,7 +73,7 @@ public class ProjectService {
         project.setSkills(projectDto.getSkills() != null ? projectDto.getSkills() : new ArrayList<>());
         project.setNgo(ngo);
 
-        // Save project
+        // 3. Save project
         Project savedProject = projectRepository.save(project);
         return convertToDto(savedProject);
     }
