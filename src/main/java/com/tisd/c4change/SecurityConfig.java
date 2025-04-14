@@ -1,5 +1,6 @@
 package com.tisd.c4change;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,35 +26,44 @@ public class SecurityConfig {
 
     private final FirebaseAuthenticationFilter firebaseAuthFilter;
 
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints first
                         .requestMatchers(
                                 "/api/login-individual",
                                 "/api/login-ngo",
+
                                 "/api/register-individual",
-                                "/api/register-ngo"
+                                "/api/register-ngo",
+                                "/api/projects",
+                                "/api/projects/**",
+                                "/api/test/public"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/projects").authenticated()
+                        // OPTIONS requests
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/ngo-profile/**").authenticated() //
+                        // All other requests need authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(firebaseAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                // Add the firebase filter after other security processing
+                .addFilterAfter(firebaseAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("*"));
+        config.setAllowedOrigins(List.of("http://localhost:5173")); // Your frontend URL
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);

@@ -24,10 +24,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProjectService {
 
+    @Autowired
     private final ProjectRepository projectRepository;
+    @Autowired
     private final NGORepository ngoRepository;
+
     private final ModelMapper modelMapper;
 //    private final SkillMatchingService skillMatchingService;
+    @Autowired
     private final IndividualRepository individualRepository;
 
 
@@ -39,7 +43,6 @@ public class ProjectService {
 //    List<Project> allProjects = projectRepository.findAll();
     SkillMatchingService skillMatchingService;
 //
-
     public List<ProjectMatch> getRecommendedProjects(Long volunteerId) {
         // Get volunteer skills
         IndividualUser volunteer = individualRepository.findById(volunteerId)
@@ -58,7 +61,7 @@ public class ProjectService {
 
 
     public ProjectResponseDto createProject(ProjectRequestDto projectDto) {
-        // 1. Validate NGO exists (already verified in controller)
+        // 1. Validate NGO exists
         NGOProfile ngo = ngoRepository.findById(projectDto.getNgoId())
                 .orElseThrow(() -> new ResourceNotFoundException("NGO not found with id: " + projectDto.getNgoId()));
 

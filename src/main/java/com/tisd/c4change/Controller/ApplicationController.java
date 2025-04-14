@@ -13,12 +13,17 @@ import com.tisd.c4change.Repository.ProjectApplicationRepository;
 import com.tisd.c4change.Repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -26,9 +31,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ApplicationController {
 
+    @Autowired
     private final ProjectApplicationRepository applicationRepository;
+    @Autowired
     private final ProjectRepository projectRepository;
+    @Autowired
     private final IndividualRepository individualRepository;
+    @Autowired
     private final ModelMapper modelMapper;
 
     // Volunteer applies for a project
@@ -43,7 +52,6 @@ public class ApplicationController {
         IndividualUser volunteer = individualRepository.findById(applicationDto.getVolunteerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Volunteer not found"));
 
-        // Check if application already exists
         if (applicationRepository.existsByProjectIdAndVolunteerId(
                 applicationDto.getProjectId(), applicationDto.getVolunteerId())) {
             throw new ConflictException("You have already applied for this project");
@@ -55,8 +63,10 @@ public class ApplicationController {
         application.setStatus(ApplicationStatus.PENDING);
 
         ProjectApplication savedApplication = applicationRepository.save(application);
+
         return ResponseEntity.ok(convertToDto(savedApplication));
     }
+
 
     // NGO views applications for their projects
     @GetMapping("/ngo/{ngoId}")
@@ -92,8 +102,17 @@ public class ApplicationController {
         ProjectApplication application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
 
+        // Verify the requesting user is the NGO owner
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserEmail = (String) ((Map<String, String>) authentication.getPrincipal()).get("email");
+
+        if (!application.getProject().getNgo().getEmail().equals(currentUserEmail)) {
+            throw new AccessDeniedException("You don't have permission to update this application");
+        }
+
         application.setStatus(status);
         ProjectApplication updatedApplication = applicationRepository.save(application);
+
         return ResponseEntity.ok(convertToDto(updatedApplication));
     }
 

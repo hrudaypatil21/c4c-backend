@@ -102,8 +102,10 @@ public class UserController {
             dto.setPhone(phone);
             dto.setAddress(address);
             dto.setBio(bio);
-            dto.setSkills(mapper.readValue(skills, new TypeReference<List<String>>() {}));
-            dto.setInterests(mapper.readValue(interests, new TypeReference<List<String>>() {}));
+            dto.setSkills(mapper.readValue(skills, new TypeReference<List<String>>() {
+            }));
+            dto.setInterests(mapper.readValue(interests, new TypeReference<List<String>>() {
+            }));
             dto.setAvailability(Availability.valueOf(availability.toUpperCase()));
             dto.setResume(resume);  // Can be null
 
@@ -190,7 +192,8 @@ public class UserController {
             dto.setAddress(address);
             dto.setMission(mission);
             dto.setWebsite(website);
-            dto.setVolNeeds(objectMapper.readValue(volNeeds, new TypeReference<List<String>>() {}));
+            dto.setVolNeeds(objectMapper.readValue(volNeeds, new TypeReference<List<String>>() {
+            }));
             dto.setVerificationDocs(verificationDocs);
 
             NGOResponseDto response = userService.registerNGO(dto, userRecordNgo.getUid());
@@ -282,8 +285,6 @@ public class UserController {
             NGOProfile user = ngoRepository.findByEmail(decodedToken.getEmail())
                     .orElseThrow(() -> new UserNotFoundException("User not registered"));
 
-
-
             // 3. Create response (with NGO-specific fields)
             Map<String, Object> response = new HashMap<>();
             response.put("uid", decodedToken.getUid());
@@ -317,27 +318,103 @@ public class UserController {
 
     @GetMapping("/user-profile")
     public ResponseEntity<?> getUserProfile(Authentication authentication) {
-        String uid = (String) authentication.getPrincipal();
+        try {
+            // Safely get the principal as a Map
+            @SuppressWarnings("unchecked")
+            Map<String, String> principal = (Map<String, String>) authentication.getPrincipal();
+            String uid = principal.get("uid");
 
-        // Check both individual and NGO repositories
-        Optional<IndividualUser> individual = individualRepository.findByFirebaseUid(uid);
-        if (individual.isPresent()) {
-            return ResponseEntity.ok(DtoConverter.toIndividualResponseDto(individual.get()));
+            // Check both individual and NGO repositories
+            Optional<IndividualUser> individual = individualRepository.findByFirebaseUid(uid);
+            if (individual.isPresent()) {
+                return ResponseEntity.ok(DtoConverter.toIndividualResponseDto(individual.get()));
+            }
+
+            Optional<NGOProfile> ngo = ngoRepository.findByFirebaseUid(uid);
+            if (ngo.isPresent()) {
+                return ResponseEntity.ok(DtoConverter.toNGOResponseDto(ngo.get()));
+            }
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        } catch (ClassCastException e) {
+            // Fallback for cases where principal is just the UID string
+            String uid = (String) authentication.getPrincipal();
+
+            Optional<IndividualUser> individual = individualRepository.findByFirebaseUid(uid);
+            if (individual.isPresent()) {
+                return ResponseEntity.ok(DtoConverter.toIndividualResponseDto(individual.get()));
+            }
+
+            Optional<NGOProfile> ngo = ngoRepository.findByFirebaseUid(uid);
+            if (ngo.isPresent()) {
+                return ResponseEntity.ok(DtoConverter.toNGOResponseDto(ngo.get()));
+            }
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
     }
 
     @GetMapping("/ngo-profile")
     public ResponseEntity<?> getNGOProfile(Authentication authentication) {
-        String uid = (String) authentication.getPrincipal();
+        try {
+            // Safely get the principal as a Map
+            @SuppressWarnings("unchecked")
+            Map<String, String> principal = (Map<String, String>) authentication.getPrincipal();
+            String uid = principal.get("uid");
 
-        Optional<NGOProfile> ngo = ngoRepository.findByFirebaseUid(uid);
-        if (ngo.isPresent()) {
-            return ResponseEntity.ok(DtoConverter.toNGOResponseDto(ngo.get()));
+            Optional<NGOProfile> ngo = ngoRepository.findByFirebaseUid(uid);
+            if (ngo.isPresent()) {
+                return ResponseEntity.ok(DtoConverter.toNGOResponseDto(ngo.get()));
+            }
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("NGO not found");
+        } catch (ClassCastException e) {
+            // Fallback for cases where principal is just the UID string
+            String uid = (String) authentication.getPrincipal();
+
+            Optional<NGOProfile> ngo = ngoRepository.findByFirebaseUid(uid);
+            if (ngo.isPresent()) {
+                return ResponseEntity.ok(DtoConverter.toNGOResponseDto(ngo.get()));
+            }
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("NGO not found");
         }
+    }
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("NGO not found");
+    @GetMapping("/ngo-profile/{identifier}")
+    public ResponseEntity<?> getNGOProfile(
+            @PathVariable String identifier,
+            Authentication authentication) {
+
+        try {
+            // Get current user UID from authentication
+            String currentUserUid;
+            if (authentication.getPrincipal() instanceof Map) {
+                currentUserUid = ((Map<String, String>) authentication.getPrincipal()).get("uid");
+            } else {
+                currentUserUid = (String) authentication.getPrincipal();
+            }
+
+            // Try to find by Firebase UID first
+            Optional<NGOProfile> ngo = ngoRepository.findByFirebaseUid(identifier);
+
+            // If not found by UID, try by ID (if identifier is numeric)
+            if (!ngo.isPresent() && identifier.matches("\\d+")) {
+                ngo = ngoRepository.findById(Long.parseLong(identifier));
+            }
+
+            if (ngo.isPresent()) {
+                // Verify ownership
+                if (!ngo.get().getFirebaseUid().equals(currentUserUid)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Unauthorized access");
+                }
+                return ResponseEntity.ok(DtoConverter.toNGOResponseDto(ngo.get()));
+            }
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("NGO not found");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error fetching NGO profile");
+        }
     }
 
     @PostMapping("/debug-form")
@@ -351,11 +428,11 @@ public class UserController {
                 ", size: " + file.getSize() +
                 ", type: " + file.getContentType());
     }
-
+}
 
 
 //    @GetMapping("/u/{id}")
 //    public ResponseEntity<IndividualResponseDto> getIndividualUser(@PathVariable("id") Long id ) {
 //        IndividualResponseDto getIndUser = userService.
 //    }
-}
+

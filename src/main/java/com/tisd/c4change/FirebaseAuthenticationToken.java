@@ -8,16 +8,16 @@ import org.springframework.stereotype.Component;
 import java.lang.String;
 
 import java.util.Collections;
+import java.util.Map;
 
 public class FirebaseAuthenticationToken extends AbstractAuthenticationToken {
-
-    private final String uid;
+    private final Object principal; // Can be either Map or String
     @Getter
     private final FirebaseToken token;
 
-    public FirebaseAuthenticationToken(String uid, FirebaseToken token) {
+    public FirebaseAuthenticationToken(Object principal, FirebaseToken token) {
         super(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
-        this.uid = uid;
+        this.principal = principal;
         this.token = token;
         setAuthenticated(true);
     }
@@ -29,7 +29,6 @@ public class FirebaseAuthenticationToken extends AbstractAuthenticationToken {
 
     @Override
     public Object getPrincipal() {
-        return uid;
+        return principal;
     }
-
-    }
+}

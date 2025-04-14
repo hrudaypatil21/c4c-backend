@@ -2,8 +2,10 @@ package com.tisd.c4change.Mapper;
 
 import com.tisd.c4change.DTO.IndividualDTO.IndividualResponseDto;
 import com.tisd.c4change.DTO.NgoDTO.NGOResponseDto;
+import com.tisd.c4change.DTO.ProjectDTO.ProjectResponseDto;
 import com.tisd.c4change.Entity.IndividualUser;
 import com.tisd.c4change.Entity.NGOProfile;
+import com.tisd.c4change.Entity.Project;
 
 public class DtoConverter {
     public static IndividualResponseDto toIndividualResponseDto(IndividualUser individualUser) {
@@ -35,6 +37,18 @@ public class DtoConverter {
         dto.setWebsite(ngo.getOrgWebsite());
         dto.setVolNeeds(ngo.getVolNeeds());
         dto.setHasVerificationDocs(ngo.getVerificationDocsPath() != null && ngo.getVerificationDocsPath().length > 0);
+        return dto;
+    }
+
+    public static ProjectResponseDto toProjectResponseDto(Project project) {
+        ProjectResponseDto dto = new ProjectResponseDto();
+        dto.setId(project.getId());
+        dto.setTitle(project.getTitle());
+        dto.setDescription(project.getDescription());
+        dto.setLocation(project.getLocation());
+        dto.setSkills(project.getSkills());
+        dto.setStatus(String.valueOf(project.getStatus()));
+
         return dto;
     }
 }

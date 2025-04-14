@@ -19,12 +19,8 @@ public class ProjectResponseDto {
     private Long id;
     private String title;
     private String description;
-    private ProjectStatus status;
-    private LocalDateTime createdAt;
-    private LocalDateTime startedAt;
-    private LocalDateTime endedAt;
     private String location;
     private List<String> skills;
-    private Long ngoId;
+    private String status;
     private String ngoName;
 }

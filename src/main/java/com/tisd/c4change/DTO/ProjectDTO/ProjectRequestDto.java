@@ -7,21 +7,39 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import javax.validation.constraints.Future;
+import javax.validation.constraints.FutureOrPresent;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
 @Setter
 @NoArgsConstructor
-@Data
 @Accessors(chain = true)
 public class ProjectRequestDto {
+    @NotBlank
     private String title;
+
+    @NotBlank
     private String description;
+
+    @NotNull
     private ProjectStatus status;
+
+    @NotNull
+    @FutureOrPresent
     private LocalDateTime startedAt;
+
+    @Future
     private LocalDateTime endedAt;
+
+    @NotBlank
     private String location;
+
     private List<String> skills;
-    private Long ngoId;
+
+    @NotNull
+    private Long ngoId; // Added back as it's needed by service layer
 }
