@@ -40,26 +40,30 @@ public class ProjectController {
 
     @PostMapping
     public ResponseEntity<?> createProject(
-            @RequestBody @Valid ProjectRequestDto projectDto,
-            Authentication authentication) {
+            @RequestBody @Valid ProjectRequestDto projectDto) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         try {
             String firebaseUid;
 
             if (authentication.getPrincipal() instanceof FirebaseAuthenticationToken) {
-                // Handle Firebase token case
                 FirebaseAuthenticationToken token = (FirebaseAuthenticationToken) authentication.getPrincipal();
                 firebaseUid = token.getToken().getUid();
             } else if (authentication.getPrincipal() instanceof String) {
-                // Handle string UID case
                 firebaseUid = (String) authentication.getPrincipal();
             } else {
                 throw new AccessDeniedException("Unsupported principal type");
             }
 
-            // Find NGO by Firebase UID
+            System.out.println("Extracted Firebase UID: " + firebaseUid); // Debug log
+
             NGOProfile ngo = ngoRepository.findByFirebaseUid(firebaseUid)
-                    .orElseThrow(() -> new ResourceNotFoundException("NGO not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("NGO not found for UID: " + firebaseUid));
+
 
             // Create enriched DTO with NGO ID
             ProjectRequestDto enrichedDto = new ProjectRequestDto()
@@ -92,46 +96,7 @@ public class ProjectController {
         return ResponseEntity.ok(projects);
     }
 
-    @GetMapping("/recommended")
-    public ResponseEntity<List<ProjectMatchDTO>> getRecommendedProjects(
-            @RequestParam String volunteerId) {
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        // Debug logging - add this temporarily
-        System.out.println("Authentication object: " + authentication);
-        if (authentication != null) {
-            System.out.println("Principal class: " + authentication.getPrincipal().getClass());
-            System.out.println("Principal: " + authentication.getPrincipal());
-        }
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AccessDeniedException("User not authenticated");
-        }
-
-        String authenticatedUid;
-        if (authentication.getPrincipal() instanceof FirebaseAuthenticationToken) {
-            // Handle custom token case
-            FirebaseAuthenticationToken token = (FirebaseAuthenticationToken) authentication.getPrincipal();
-            authenticatedUid = token.getToken().getUid();
-        } else if (authentication.getPrincipal() instanceof String) {
-            // Handle string UID case
-            authenticatedUid = (String) authentication.getPrincipal();
-        } else {
-            throw new AccessDeniedException("Unsupported principal type");
-        }
-
-        if (!authenticatedUid.equals(volunteerId)) {
-            throw new AccessDeniedException("User not authorized to access these recommendations");
-        }
-
-        List<ProjectMatch> matches = projectService.getRecommendedProjects(volunteerId);
-        List<ProjectMatchDTO> dtos = matches.stream()
-                .map(m -> new ProjectMatchDTO(m.getProject(), m.getSimilarityScore()))
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(dtos);
-    }
 
     @GetMapping
     public ResponseEntity<List<ProjectResponseDto>> getAllProjects() {

@@ -84,8 +84,15 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
 
     private boolean shouldSkipAuthentication(HttpServletRequest request) {
         String path = request.getServletPath();
+        String method = request.getMethod();
+
+        // Allow OPTIONS requests
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return true;
+        }
         return path.startsWith("/api/login")
                 || path.startsWith("/api/register")
+                || (path.startsWith("/api/projects") && "GET".equalsIgnoreCase(method))
                 || path.equals("/api/test/public")
                 || "OPTIONS".equalsIgnoreCase(request.getMethod());
     }

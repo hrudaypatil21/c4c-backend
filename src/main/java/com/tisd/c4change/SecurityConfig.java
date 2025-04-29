@@ -39,7 +39,6 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/login-individual",
                                 "/api/login-ngo",
-
                                 "/api/register-individual",
                                 "/api/register-ngo",
                                 "/api/projects",
@@ -48,10 +47,11 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/applications").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/projects").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/projects/recommended").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/projects").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/recommended").permitAll() // Updated this line
                         // OPTIONS requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/ngo-profile/**").authenticated() //
+                        .requestMatchers("/api/ngo-profile/**").authenticated()
                         // All other requests need authentication
                         .anyRequest().authenticated()
                 )
@@ -62,6 +62,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

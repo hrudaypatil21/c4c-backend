@@ -118,6 +118,11 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.hateoas</groupId>
+			<artifactId>spring-hateoas</artifactId>
+			<version>2.1.0</version> <!-- Use the version that matches your Spring Boot version -->
+		</dependency>
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
